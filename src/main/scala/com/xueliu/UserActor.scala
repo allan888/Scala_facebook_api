@@ -122,6 +122,6 @@ class UserActor() extends Actor{
         case _ => sender ! Error("unsupported userActor request.")
       }
     }
-    case _ => case _ => sender ! Error("unsupported userActor request.")
+    case _ => sender ! Error("unsupported userActor request.")
   }
 }
