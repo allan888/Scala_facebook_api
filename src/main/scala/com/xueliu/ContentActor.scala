@@ -52,7 +52,7 @@ class ContentActor extends Actor{
               "content" -> x.content
             )
           }
-          case None => {
+          case None => { 
             newTimeline(i) = Map(
               "id" -> ids(i).toString,
               "content" -> "not found"
