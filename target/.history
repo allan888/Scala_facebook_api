@@ -1,0 +1,12 @@
+~re-start
+compile
+re-start
+sbt
+run
+re-start
+re-start webServer
+~re-start
+~re-start webServer
+~re-start webService
+~re-start webServer
+~re-start
