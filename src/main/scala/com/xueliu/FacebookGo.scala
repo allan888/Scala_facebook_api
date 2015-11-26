@@ -31,6 +31,7 @@ class FacebookGoActor extends Actor with FacebookService {
   //val userActor = context.actorOf(Props[UserActor], "userActor")
   val userActorSelection = context.actorSelection("akka.tcp://facebook@127.0.0.1:8082/user/userService")
   val contentActorSelection = context.actorSelection("akka.tcp://facebook@127.0.0.1:8082/user/contentService")
+  val friendsListActorSelection = context.actorSelection("akka.tcp://facebook@127.0.0.1:8082/user/friendsListService")
   val myRoute = {
 
     // differentiate get and post first
@@ -113,7 +114,7 @@ class FacebookGoActor extends Actor with FacebookService {
         entity(as[MessageWithToken]) {
           msg => {
             complete {
-              MessageWithTokenAndId(msg.message, msg.access_token, l_id).postMessage(userActorSelection, contentActorSelection) match {
+              MessageWithTokenAndId(msg.message, msg.access_token, l_id).postMessage(userActorSelection, contentActorSelection, friendsListActorSelection) match {
                 case x: ID => x.toJson.toString
                 case x: Error => x.toJson.toString
                 case _ => Error("internal error").toJson.toString

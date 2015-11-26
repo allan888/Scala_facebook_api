@@ -113,10 +113,12 @@ class UserActor() extends Actor{
         case None => sender ! Error("invalid username")
       }
     }
-    case RequestIdId(req,uid,pid) => {
+    case RequestIdId(req,pid,uids) => {
       req match {
         case "addPost" => {
-          pid +=: userPageDB(uid)
+          for (i <- 0 until uids.ids.length){
+            pid +=: userPageDB(uids.ids(i))
+          }
           sender ! OK("adding post done")
         }
         case _ => sender ! Error("unsupported userActor request.")

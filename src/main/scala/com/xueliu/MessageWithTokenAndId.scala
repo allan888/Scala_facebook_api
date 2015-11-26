@@ -16,7 +16,7 @@ object MessageWithTokenAndIdJsonProtocol extends DefaultJsonProtocol {
   implicit val messagewithtokenandidFormat = jsonFormat3(MessageWithTokenAndId)
 }
 case class MessageWithTokenAndId(message: String, access_token:String,uid:Long) {
-  def postMessage(userActorSelection:ActorSelection, contentActorSelection:ActorSelection) = {
+  def postMessage(userActorSelection:ActorSelection, contentActorSelection:ActorSelection, friendsListActorSelection:ActorSelection) = {
     implicit val timeout = Timeout(10 seconds)
 
     val future1 = userActorSelection ? Token(access_token)
@@ -28,14 +28,21 @@ case class MessageWithTokenAndId(message: String, access_token:String,uid:Long) 
             val future2 = contentActorSelection ? PostNoId(uid, got_name, "post", Calendar.getInstance.getTime.toString, message,"")
             val ret2 = Await.result(future2, Duration.Inf)
             ret2 match {
-              case ID(ret_id) => {
-                val future3 = userActorSelection ? RequestIdId("addPost", uid, ret_id)
+              case ID(p_id) => { // p_id is post id
+                val future3 = friendsListActorSelection ? ID(uid)
                 val ret3 = Await.result(future3, Duration.Inf)
                 ret3 match {
-                  case x:OK => ID(ret_id)
-                  case x:Error => x
-                  case _ => Error("add post failed")
+                  case IDArray(f_list) => { //
+                    val future4 = userActorSelection ? RequestIdId("addPost", p_id, IDArray(uid +: f_list))
+                    val ret4 = Await.result(future4, Duration.Inf)
+                    ret4 match {
+                      case x:OK => ID(p_id)
+                      case x:Error => x
+                      case _ => Error("add post failed")
+                    }
+                  }
                 }
+
               }
               case x:Error => x
               case _ => Error("add post failed")

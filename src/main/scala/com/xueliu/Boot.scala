@@ -21,15 +21,19 @@ object Main {
       val userService = system.actorOf(Props[UserActor], "userService")
       //----------user server------------
 
-      //----------user server------------
+      //----------content server------------
       val contentService = system.actorOf(Props[ContentActor], "contentService")
-      //----------user server------------
+      //----------content server------------
+
+      //----------friends list server------------
+      val friendsListService = system.actorOf(Props[FriendsListActor], "friendsListService")
+      //----------friends list server------------
 
 
       //----------web server------------
       // create and start our service actor
-      var routees:List[ActorRef] = List()
-      for(i <- 1 to 250){
+      var routees: List[ActorRef] = List()
+      for (i <- 1 to 250) {
         routees = system.actorOf(Props[FacebookGoActor]) +: routees
       }
       val fbService = system.actorOf(Props[FacebookGoActor].withRouter(RoundRobinRouter(routees = routees)))
@@ -38,7 +42,6 @@ object Main {
       // start a new HTTP server on port 8080 with our service actor as the handler
       IO(Http) ? Http.Bind(fbService, interface = "localhost", port = 8080)
       //----------web server------------
-
 
 
     } else {
@@ -50,8 +53,8 @@ object Main {
         implicit val system = ActorSystem("facebook")
 
         // create and start our service actor
-        var routees:List[ActorRef] = List()
-        for(i <- 1 to 250){
+        var routees: List[ActorRef] = List()
+        for (i <- 1 to 250) {
           routees = system.actorOf(Props[FacebookGoActor]) +: routees
         }
         val fbService = system.actorOf(Props[FacebookGoActor].withRouter(RoundRobinRouter(routees = routees)))
@@ -67,8 +70,15 @@ object Main {
         val userService = system.actorOf(Props[UserActor], "userService")
 
       } else if (args(0) == "contentServer") {
+
         implicit val system = ActorSystem("facebook")
         val userService = system.actorOf(Props[ContentActor], "contentService")
+
+      } else if (args(0) == "friendsListServer") {
+
+        implicit val system = ActorSystem("facebook")
+        val friendsListService = system.actorOf(Props[FriendsListActor], "friendsListService")
+
       }
     }
   }
