@@ -19,6 +19,8 @@ import akka.pattern.ask
 import scala.concurrent.duration._
 import TimelineNodeJsonProtocol._
 import OKJsonProtocol._
+import TokenAndIdJsonProtocol._
+import DefaultJsonProtocol._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -98,7 +100,11 @@ class FacebookGoActor extends Actor with FacebookService {
         entity(as[UserPass]) {
           info => {
             complete {
-              info.getToken(userActorSelection).toString
+              info.getToken(userActorSelection) match {
+                case x:TokenAndId => x.toJson.toString
+                case x:Error => x.toJson.toString
+                case _ => Error("internal error").toJson.toString
+              }
             }
           }
         }
@@ -106,7 +112,15 @@ class FacebookGoActor extends Actor with FacebookService {
         entity(as[UserPass]) {
           info => {
             complete {
-              info.register(userActorSelection).toString
+              info.register(userActorSelection) match {
+                case x:ID => {
+                  import DefaultJsonProtocol._
+                  val source = """{ "ok": "registration succeed", "id": """ + x.id + """}"""
+                  source.parseJson.toString
+                }
+                case x:Error => x.toJson.toString
+                case _ => Error("internal error").toJson.toString
+              }
             }
           }
         }

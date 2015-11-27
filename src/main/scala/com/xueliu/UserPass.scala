@@ -24,25 +24,26 @@ object UserPassRequestJsonProtocol extends DefaultJsonProtocol {
 }
 
 case class UserPass(username: String, password:String) {
-  def getToken(userActor:ActorSelection):JsValue = {
+  def getToken(userActor:ActorSelection) = {
     implicit val timeout = Timeout(10 seconds)
     val future = userActor ? UserPassRequest("getToken",username,password)
     val ini = Await.result(future, Duration.Inf)
     ini match {
-      case x:Token => return x.toJson
-      case x:Error => return x.toJson
+      case x:TokenAndId => x
+      case x:Error => x
       case _ => {
-        return Error("unrecognized request").toJson
+        Error("unrecognized request")
       }
     }
   }
-  def register(userActor:ActorSelection):JsValue = {
+  def register(userActor:ActorSelection) = {
     implicit val timeout = Timeout(10 seconds)
     val future = userActor ? UserPassRequest("register",username,password)
     val ini = Await.result(future, Duration.Inf)
     ini match {
-      case x:OK => return x.toJson
-      case x:Error => return x.toJson
+      case x:ID => x
+      case x:Error => x
+      case _ => Error("error in registration process")
     }
   }
 

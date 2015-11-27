@@ -62,7 +62,7 @@ class UserActor() extends Actor{
                 if(!tokenDB.contains(hash)){
                   tokenDB += (hash -> IdAndName(id,u))
                 }
-                Token(hash)
+                TokenAndId(hash,id)
               }
               case false => Error("password does not match")
             }
@@ -84,7 +84,7 @@ class UserActor() extends Actor{
         userDB_by_name.put(u,new_id)
         userDB_by_id.put(new_id,(u,md5(u+p)))
         userPageDB.put(new_id,new ListBuffer[Long])
-        OK("register succeed")
+        ID(new_id)
       }
     }
   }

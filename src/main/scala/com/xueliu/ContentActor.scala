@@ -45,7 +45,8 @@ class ContentActor extends Actor{
         contentDB.get(ids(i)) match {
           case Some(x) => {
             newTimeline(i) = Map(
-              "id" -> x.userid.toString,
+              "creator_id" -> x.userid.toString,
+              "post_id" -> ids(i).toString,
               "name" -> x.username,
               "type" -> x.typ,
               "created_time" -> x.date,
