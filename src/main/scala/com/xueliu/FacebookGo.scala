@@ -49,7 +49,7 @@ class FacebookGoActor extends Actor with FacebookService {
         // 这里面是网站的/me/feed/目录
 
         // 下面这行时说token是必须的, otherPara后面有问号是说otherPara是可选的
-        parameters('access_token, 'otherPara.?) { (token, otherPara) =>
+        parameters('access_token, 'from ? 0, 'num ? 10, 'otherPara.?) { (token, from, num, otherPara) =>
 
           complete {
             // 判断一下otherPara有没有传进来
@@ -72,7 +72,47 @@ class FacebookGoActor extends Actor with FacebookService {
                   //如果转换用户名成功的话,如何如何
                   case IdAndName(id, name) => {
                     implicit val timeout = Timeout(10 seconds)
-                    val future = userActorSelection ? FeedRequest(id, 0, 10)
+                    val future = userActorSelection ? FeedRequest("timeline",id, from, num)
+                    val ini = Await.result(future, Duration.Inf)
+                    ini match {
+                      case x: Timeline => x.toNodeFormat(contentActorSelection) match {
+                        case x: TimelineNode => x.toJson.toString
+                        case x: Error => x.toJson.toString
+                        case _ => Error("internal error").toJson.toString
+                      }
+                      case x: Error => x.toJson.toString
+                      case _ => Error("internal error").toJson.toString
+                    }
+                  }
+
+                  case _ => Error("internal error").toJson.toString
+                }
+              }
+            }
+
+          }
+        }
+      } ~ path(LongNumber / "feed" /) { l_id =>
+
+        parameters('access_token, 'from ? 0, 'num ? 10, 'otherPara.?) { (token, from, num, otherPara) =>
+
+          complete {
+            otherPara match {
+
+              case Some(otherStr) => {
+                "test"
+              }
+              case None => {
+                Token(token).getUserIdAndName(userActorSelection) match {
+
+                  //error的话如何如何
+                  case err: Error => err.toJson.toString
+
+                  //如果转换用户名成功的话,如何如何
+                  case IdAndName(id, name) => {
+                    implicit val timeout = Timeout(10 seconds)
+                    // 获取网址里面传进来的id的对应的人的timeline
+                    val future = userActorSelection ? FeedRequest("own",l_id, from, num)
                     val ini = Await.result(future, Duration.Inf)
                     ini match {
                       case x: Timeline => x.toNodeFormat(contentActorSelection) match {

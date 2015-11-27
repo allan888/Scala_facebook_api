@@ -13,7 +13,7 @@ object TimelineJsonProtocol extends DefaultJsonProtocol {
 
   implicit val timelineFormat = jsonFormat3(Timeline)
 }
-case class Timeline(ids:Array[Long], previous:String, next:String) {
+case class Timeline(ids:Array[Long], previous:Int, next:Int) {
   def toNodeFormat(contentActorSelection: ActorSelection) = {
     implicit val timeout = Timeout(10 seconds)
     val future = contentActorSelection ? IDArray(ids)

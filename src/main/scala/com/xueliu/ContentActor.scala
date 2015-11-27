@@ -61,7 +61,7 @@ class ContentActor extends Actor{
           }
         }
       }
-      sender ! TimelineNode(newTimeline,"","")
+      sender ! TimelineNode(newTimeline,0,0)
     }
     case other => {
       println(other.getClass)

@@ -43,6 +43,16 @@ class UserActor() extends Actor{
   5000003L +=: userPageDB(1000002L)
   5000004L +=: userPageDB(1000002L)
 
+
+  val userOwnDB = new mutable.HashMap[Long,ListBuffer[Long]]()
+  userOwnDB += (1000001L -> new ListBuffer[Long])
+  5000001L +=: userOwnDB(1000001L)
+  5000002L +=: userOwnDB(1000001L)
+
+  userOwnDB += (1000002L -> new ListBuffer[Long])
+  5000003L +=: userOwnDB(1000002L)
+  5000004L +=: userOwnDB(1000002L)
+
   // token -> username
   val tokenDB = new HashMap[String,IdAndName]()
   // add some default data
@@ -107,15 +117,35 @@ class UserActor() extends Actor{
         }
       }
     }
-    case FeedRequest(id,from,to) => {
-      userPageDB.get(id) match {
-        case Some(data) => sender ! Timeline(data.slice(from,to).toArray,"prev","next")
-        case None => sender ! Error("invalid username")
+    case FeedRequest(typ, id,from,num) => {
+      typ match {
+        case "timeline" => {
+          userPageDB.get(id) match {
+            case Some(data) => {
+
+              sender ! Timeline(data.slice(from,from+num).toArray, if (from > 10) (from - 10) else 0,from+num)
+            }
+            case None => sender ! Error("invalid username")
+          }
+        }
+        case "own" => {
+          userOwnDB.get(id) match {
+            case Some(data) => {
+              sender ! Timeline(data.slice(from,from+num).toArray, if (from > 10) (from - 10) else 0,from+num)
+            }
+            case None => sender ! Error("invalid username")
+          }
+        }
+        case _ => sender ! Error("invalid type")
       }
+
     }
     case RequestIdId(req,pid,uids) => {
       req match {
         case "addPost" => {
+          // uids is friend list ids
+          // the first id in ids contains the poster's id
+          pid +=: userOwnDB(uids.ids(0))
           for (i <- 0 until uids.ids.length){
             pid +=: userPageDB(uids.ids(i))
           }
