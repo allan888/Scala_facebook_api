@@ -45,6 +45,25 @@ class FriendsListActor() extends Actor{
       Error("user not exists")
     }
   }
+  def delFriend(me:Long,other:Long) = {
+    if( friendsListDB.keySet.exists(_ == me) && friendsListDB.keySet.exists(_ == other) && me != other){
+      friendsListDB.get(me) match {
+        case Some(me_list) => {
+          friendsListDB.get(other) match {
+            case Some(other_list) => {
+              friendsListDB += (me -> me_list.filter(_.id != other))
+              friendsListDB += (other -> other_list.filter(_.id != me))
+              OK("delete friend done")
+            }
+            case None => Error("your are not friend")
+          }
+        }
+        case None => Error("your are not friend")
+      }
+    }else{
+      Error("user not exists")
+    }
+  }
 
   def receive = {
     case RequestId(req,id) => {
@@ -57,6 +76,9 @@ class FriendsListActor() extends Actor{
       req match {
         case "add" => {
           sender ! addFriend(id,id_name)
+        }
+        case "del" => {
+          sender ! delFriend(id_name.id,id)
         }
         case _ => sender ! Error("unsupported friendsListActor request.")
       }

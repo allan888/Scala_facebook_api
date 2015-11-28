@@ -15,10 +15,10 @@ class ContentActor extends Actor {
   // entry -> username, type, title, content
   val contentDB = new HashMap[Long, PostNoId]()
   // add some default users, data has not been persisted.
-  contentDB += (5000001L -> PostNoId(1000001L, "xueliu", "post", Calendar.getInstance.getTime.toString, "sample content 1", "aux content 1",0))
-  contentDB += (5000002L -> PostNoId(1000001L, "xueliu", "post", Calendar.getInstance.getTime.toString, "sample content 2", "aux content 2",0))
-  contentDB += (5000003L -> PostNoId(1000002L, "yazhang", "post", Calendar.getInstance.getTime.toString, "sample content 3", "aux content 3",0))
-  contentDB += (5000004L -> PostNoId(1000002L, "yazhang", "post", Calendar.getInstance.getTime.toString, "sample content 4", "aux content 4",0))
+  contentDB += (5000001L -> PostNoId(1000001L, "xueliu", "post", Calendar.getInstance.getTime.toString, "sample content 1", "aux content 1", 0))
+  contentDB += (5000002L -> PostNoId(1000001L, "xueliu", "post", Calendar.getInstance.getTime.toString, "sample content 2", "aux content 2", 0))
+  contentDB += (5000003L -> PostNoId(1000002L, "yazhang", "post", Calendar.getInstance.getTime.toString, "sample content 3", "aux content 3", 0))
+  contentDB += (5000004L -> PostNoId(1000002L, "yazhang", "post", Calendar.getInstance.getTime.toString, "sample content 4", "aux content 4", 0))
 
   def getPost(id: Long) = {
     contentDB.get(id) match {
@@ -45,7 +45,7 @@ class ContentActor extends Actor {
       for (i <- 0 until ids.length) {
         contentDB.get(ids(i)) match {
           case Some(x) => {
-            if(x.typ == "photo"){
+            if (x.typ == "photo") {
               newTimeline(i) = Map(
                 "creator_id" -> x.userid.toString,
                 "post_id" -> ids(i).toString,
@@ -56,7 +56,7 @@ class ContentActor extends Actor {
                 "photo" -> x.aux,
                 "album_id" -> x.aux2.toString
               )
-            } else{
+            } else {
               newTimeline(i) = Map(
                 "creator_id" -> x.userid.toString,
                 "post_id" -> ids(i).toString,
@@ -70,16 +70,29 @@ class ContentActor extends Actor {
           case None => {
             newTimeline(i) = Map(
               "id" -> ids(i).toString,
-              "content" -> "not found"
+              "content" -> "not found or has been deleted"
             )
           }
         }
       }
       sender ! TimelineNode(newTimeline, 0, 0)
     }
+    case ("delete", uid: Long, pid: Long) => {
+      contentDB.get(pid) match {
+        case Some(content) => {
+          if (content.userid == uid) {
+            contentDB -= pid
+            sender ! OK("deleted")
+          } else {
+            sender ! Error("permission denied")
+          }
+        }
+        case None => sender ! Error("content not found")
+      }
+    }
     case other => {
       println(other.getClass)
-      sender ! Error("error in content server")
+      sender ! Error("error in content server, unknow request")
     }
   }
 }

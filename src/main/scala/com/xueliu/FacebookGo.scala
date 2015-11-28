@@ -28,6 +28,8 @@ import FriendIdWithTokenJsonProtocol._
 import PersonInfoJsonProtocol._
 import TokenAndPersonInfoJsonProtocol._
 import PhotoMessageWithTokenJsonProtocol._
+import PostNoIdJsonProtocol._
+import IDArrayJsonProtocol._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -172,7 +174,7 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path("me" /) {
-        parameters('access_token,'fields) { (token,fields) =>
+        parameters('access_token, 'fields) { (token, fields) =>
 
           complete {
             Token(token).getUserIdAndName(userActorSelection) match {
@@ -195,7 +197,7 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path(LongNumber /) { l_id =>
-        parameters('access_token,'fields) { (token,fields) =>
+        parameters('access_token) { (token) =>
 
           complete {
             Token(token).getUserIdAndName(userActorSelection) match {
@@ -203,13 +205,36 @@ class FacebookGoActor extends Actor with FacebookService {
               case err: Error => err.toJson.toString
 
               case IdAndName(id, name) => {
-                implicit val timeout = Timeout(10 seconds)
-                val future = userActorSelection ? RequestId("getUserInfo", l_id)
-                val ini = Await.result(future, Duration.Inf)
-                ini match {
-                  case x: PersonInfo => x.toJson.toString
-                  case x: Error => x.toJson.toString
-                  case _ => Error("internal error").toJson.toString
+                if(l_id < 5000000L){ // user id
+                  implicit val timeout = Timeout(10 seconds)
+                  val future = userActorSelection ? RequestId("getUserInfo", l_id)
+                  val ini = Await.result(future, Duration.Inf)
+                  ini match {
+                    case x: PersonInfo => x.toJson.toString
+                    case x: Error => x.toJson.toString
+                    case _ => Error("internal error").toJson.toString
+                  }
+                }else if(l_id < 9000000L){ // post id
+                  implicit val timeout = Timeout(10 seconds)
+                  val future = contentActorSelection ? ID(l_id)
+                  val ini = Await.result(future, Duration.Inf)
+                  ini match {
+                    case x: PostNoId => x.toJson.toString
+                    case x: Error => x.toJson.toString
+                    case _ => Error("internal error").toJson.toString
+                  }
+                }else if(l_id < 9999999L){ // album id
+                  implicit val timeout = Timeout(10 seconds)
+                  val future = userActorSelection ? RequestId("getAlbumList",l_id)
+                  val ini = Await.result(future, Duration.Inf)
+                  import AlbumJsonProtocol._
+                  ini match {
+                    case x: Album => x.toJson.toString
+                    case x: Error => x.toJson.toString
+                    case _ => Error("internal error").toJson.toString
+                  }
+                }else{
+                  Error("invalid node id").toJson.toString
                 }
               }
 
@@ -249,7 +274,7 @@ class FacebookGoActor extends Actor with FacebookService {
             }
           }
         }
-      } ~ path(LongNumber / "feed" /) { l_id =>
+      } ~ path(LongNumber / "feed" /) { l_id =>  // user id -> feed, post a new message to (user)'s page
         entity(as[PhotoMessageWithToken]) {
           msg => {
             complete {
@@ -265,7 +290,7 @@ class FacebookGoActor extends Actor with FacebookService {
           msg => {
             complete {
               println("message post")
-              MessageWithTokenAndId(msg.message, "post", "",0L, msg.access_token, l_id).postMessage(userActorSelection, contentActorSelection, friendsListActorSelection) match {
+              MessageWithTokenAndId(msg.message, "post", "", 0L, msg.access_token, l_id).postMessage(userActorSelection, contentActorSelection, friendsListActorSelection) match {
                 case x: ID => x.toJson.toString
                 case x: Error => x.toJson.toString
                 case _ => Error("internal error").toJson.toString
@@ -273,7 +298,7 @@ class FacebookGoActor extends Actor with FacebookService {
             }
           }
         }
-      } ~ path(LongNumber / "friends" /) { l_id => // l_id = me
+      } ~ path(LongNumber / "friends" /) { l_id => // user id -> get friend
         entity(as[FriendIdWithToken]) {
           f_id_token => {
             complete {
@@ -323,13 +348,125 @@ class FacebookGoActor extends Actor with FacebookService {
               val future1 = userActorSelection ? t_info
               val ini1 = Await.result(future1, Duration.Inf)
               ini1 match {
-                case x:OK => x.toJson.toString
-                case x:Error => x.toJson.toString
+                case x: OK => x.toJson.toString
+                case x: Error => x.toJson.toString
                 case _ => Error("internal error").toJson.toString
               }
             }
           }
         }
+      } ~ path(LongNumber /) { l_num =>// any node is, could be person, album or post, this means update this node's info
+        import TokenAndAlbumInfoJsonProtocol._
+        entity(as[TokenAndPersonInfo]) {
+          t_info => {
+            complete {
+              if(l_num >1000000 && l_num < 5000000L){
+                Token(t_info.access_token).getUserIdAndName(userActorSelection) match{
+                  case user_info:IdAndName => {
+                    if(user_info.id == l_num){
+                      implicit val timeout = Timeout(10 seconds)
+                      val future1 = userActorSelection ? t_info
+                      val ini1 = Await.result(future1, Duration.Inf)
+                      ini1 match {
+                        case x: OK => x.toJson.toString
+                        case x: Error => x.toJson.toString
+                        case _ => Error("internal error").toJson.toString
+                      }
+                    }else{
+                      Error("invalid token").toJson.toString
+                    }
+                  }
+                  case _ => Error("invalid token").toJson.toString
+                }
+              }else{
+                Error("node number should be a person's id if you want to update profile").toJson.toString
+              }
+            }
+          }
+        } ~ entity(as[TokenAndAlbumInfo]) {
+          a_info => {
+            complete {
+              if(l_num >9000000 && l_num < 9999999L){
+                Token(a_info.access_token).getUserIdAndName(userActorSelection) match{
+                  case user_info:IdAndName => {
+                    implicit val timeout = Timeout(10 seconds)
+                    val future = userActorSelection ? ("updateAlbum", user_info.id, l_num, a_info.album_name)
+                    val ini = Await.result(future, Duration.Inf)
+                    ini match {
+                      case x:OK => x.toJson.toString
+                      case x:Error => x.toJson.toString
+                      case _ => Error("internal error").toJson.toString
+                    }
+                  }
+                  case _ => Error("invalid token").toJson.toString
+                }
+              }else{
+                Error("node number should be a album's id if you want to update album infomation").toJson.toString
+              }
+            }
+          }
+        }
+      }
+    } ~ delete {
+      path(LongNumber /) {
+        l_num =>
+          parameters('access_token) {
+            (token) =>
+              complete {
+                if(l_num < 5000000L) {
+                  // friend id
+                  Token(token).getUserIdAndName(userActorSelection) match {
+                    case userIdAndName:IdAndName =>{
+                      implicit val timeout = Timeout(10 seconds)
+                      val future1 = friendsListActorSelection ? RequestIdIdAndName("del", l_num,userIdAndName)
+                      val ini1 = Await.result(future1, Duration.Inf)
+                      ini1 match {
+                        case x: OK => x.toJson.toString
+                        case x: Error => x.toJson.toString
+                        case _ => Error("internal error").toJson.toString
+                      }
+                    }
+                    case x => Error("invalid token").toJson.toString
+                  }
+                }else if(l_num < 9000000L){
+                  // delete post
+                  Token(token).getUserIdAndName(userActorSelection) match {
+                    case userIdAndName:IdAndName =>{
+                      implicit val timeout = Timeout(10 seconds)
+                      val future1 = contentActorSelection ? ("delete", userIdAndName.id, l_num)
+                      val ini1 = Await.result(future1, Duration.Inf)
+                      ini1 match {
+                        case x: OK => x.toJson.toString
+                        case x: Error => x.toJson.toString
+                        case _ => Error("internal error").toJson.toString
+                      }
+                    }
+                    case x => Error("invalid token").toJson.toString
+                  }
+
+
+                }else if(l_num < 9999999L){
+                  // album id
+                  Token(token).getUserIdAndName(userActorSelection) match {
+                    case userIdAndName:IdAndName =>{
+                      implicit val timeout = Timeout(10 seconds)
+                      val future1 = userActorSelection ? ("deleteAlbum", userIdAndName.id, l_num)
+                      val ini1 = Await.result(future1, Duration.Inf)
+                      ini1 match {
+                        case x: OK => x.toJson.toString
+                        case x: Error => x.toJson.toString
+                        case _ => Error("internal error").toJson.toString
+                      }
+                    }
+                    case x => Error("invalid token").toJson.toString
+                  }
+
+
+                }else{
+                  Error("invalid node number").toJson.toString
+                }
+              }
+          }
       }
     }
   }

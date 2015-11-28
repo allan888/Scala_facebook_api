@@ -239,6 +239,19 @@ class UserActor() extends Actor {
             case None => sender ! Error("user not exists")
           }
         }
+        case "getAlbumList" => {
+          albumDB.get(id) match {
+            case Some(photoList) => {
+              album_info.get(id) match{
+                case Some(a_info) => {
+                  sender ! Album(a_info._1, photoList.toArray)
+                }
+                case None => sender ! Error("album not exists")
+              }
+            }
+            case None => sender ! Error("album not exists")
+          }
+        }
         case "getUserInfo" => {
           userDB_by_id.get(id) match {
             case Some(x) => sender ! x._3
@@ -261,14 +274,52 @@ class UserActor() extends Actor {
         case None => sender ! Error("user not exists")
       }
     }
+    case ("deleteAlbum", uid: Long, a_id: Long) => {
+      album_info.get(a_id) match{
+        case Some(a_info) => {
+          if(a_info._2.id == uid){
+            userDB_by_id.get(uid) match {
+              case Some(user_info) =>{
+                if(user_info._3.head != a_id){
+                  album_info -= a_id
+                  albumDB -= a_id
+                  user_info._3 -= a_id
+                  sender ! OK("deletion done")
+                }else{
+                  sender ! Error("you cannot delete default album")
+                }
+              }
+              case None => sender ! Error("fatal error, inconsistency data in userActor")
+            }
+          }else{
+            sender ! Error("album does not belong to user")
+          }
+        }
+        case None => sender ! Error("album info dose not exists")
+      }
+    }
     case ("getDefaultAlbumId", id: Long) => {
       userDB_by_id.get(id) match {
         case Some(x) => {
           sender ! ID(x._3.head)
         }
-        case None => sender ! Error("user not exists")
+        case None => sender ! Error("user does not exists")
+      }
+    }
+    case ("updateAlbum", u_id: Long,a_id:Long,a_name:String) => {
+      album_info.get(a_id) match {
+        case Some(x) => {
+          if(x._2.id == u_id){
+            album_info += (a_id -> (a_name, x._2))
+            sender ! OK("update album finished")
+          }else{
+            sender ! Error("album does belong to specified user")
+          }
+        }
+        case None => sender ! Error("album does not exists")
       }
     }
     case _ => sender ! Error("unsupported userActor request.")
   }
+  
 }
