@@ -9,40 +9,54 @@ import scala.collection.mutable
   */
 class FriendsListActor() extends Actor{
 
-  val friendsListDB = new HashMap[Long,ListBuffer[Long]]()
-  friendsListDB += (1000001L -> new ListBuffer[Long])
-  1000002L +=: friendsListDB(1000001L)
+  val friendsListDB = new HashMap[Long,ListBuffer[IdAndName]]()
+  friendsListDB += (1000001L -> new ListBuffer[IdAndName])
+  IdAndName(1000002L,"yazhang") +=: friendsListDB(1000001L)
 
-  friendsListDB += (1000002L -> new ListBuffer[Long])
-  1000001L +=: friendsListDB(1000002L)
+  friendsListDB += (1000002L -> new ListBuffer[IdAndName])
+  IdAndName(1000001L,"xueliu") +=: friendsListDB(1000002L)
 
-  def getList(uid:ID) = {
-    friendsListDB.get(uid.id) match {
-      case Some(f_list) => IDArray(f_list.toArray)
+  def getList(uid:Long) = {
+    friendsListDB.get(uid) match {
+      case Some(f_list) => IdAndNameArray(f_list.toArray)
       case None => Error("user not exists")
     }
   }
 
-  def addFriends(uid:Long,f_list:Array[Long]) = {
+  def register(uid:Long) = {
     friendsListDB.get(uid) match {
-      case Some(user) => {
-        for(i <- 0 until f_list.length){
-          f_list(i) +=: friendsListDB(1000002L)
-        }
-        OK("add friends finished")
+      case Some(f_list) => Error("user already exists")
+      case None => {
+        friendsListDB += (uid -> new ListBuffer[IdAndName])
+        OK("registration succeed")
       }
-      case None => Error("user not exists")
+    }
+  }
+
+  def addFriend(uid:Long,id_name:IdAndName) = {
+    if( friendsListDB.keySet.exists(_ == uid) && friendsListDB.keySet.exists(_ == id_name.id) && uid != id_name.id){
+      if(!friendsListDB.exists({ case (x:Long,y:ListBuffer[IdAndName]) => (x == uid && y.contains(id_name)) } ) ){
+        id_name +=: friendsListDB(uid)
+        OK("add friends finished")
+      }else{
+        Error("they are friends already")
+      }
+    }else{
+      Error("user not exists")
     }
   }
 
   def receive = {
-    case user:ID => {
-      sender ! getList(user)
+    case RequestId(req,id) => {
+      req match {
+        case "get" => sender ! getList(id)
+        case "register" => sender ! register(id)
+      }
     }
-    case RequestIdId(req,id,ids) => {
+    case RequestIdIdAndName(req,id,id_name) => { // id = me, id_name = other
       req match {
         case "add" => {
-          sender ! addFriends(id,ids.ids)
+          sender ! addFriend(id,id_name)
         }
         case _ => sender ! Error("unsupported friendsListActor request.")
       }

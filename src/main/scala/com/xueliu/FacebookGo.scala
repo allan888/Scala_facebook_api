@@ -1,5 +1,7 @@
 package com.xueliu
 
+import java.util.Calendar
+
 import akka.actor.{Props, Actor}
 import akka.util.Timeout
 import spray.routing.PathMatchers.Segment
@@ -20,7 +22,12 @@ import scala.concurrent.duration._
 import TimelineNodeJsonProtocol._
 import OKJsonProtocol._
 import TokenAndIdJsonProtocol._
+import IdAndNameArrayJsonProtocol._
 import DefaultJsonProtocol._
+import FriendIdWithTokenJsonProtocol._
+import PersonInfoJsonProtocol._
+import TokenAndPersonInfoJsonProtocol._
+import PhotoMessageWithTokenJsonProtocol._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -72,7 +79,7 @@ class FacebookGoActor extends Actor with FacebookService {
                   //如果转换用户名成功的话,如何如何
                   case IdAndName(id, name) => {
                     implicit val timeout = Timeout(10 seconds)
-                    val future = userActorSelection ? FeedRequest("timeline",id, from, num)
+                    val future = userActorSelection ? FeedRequest("timeline", id, from, num)
                     val ini = Await.result(future, Duration.Inf)
                     ini match {
                       case x: Timeline => x.toNodeFormat(contentActorSelection) match {
@@ -112,7 +119,7 @@ class FacebookGoActor extends Actor with FacebookService {
                   case IdAndName(id, name) => {
                     implicit val timeout = Timeout(10 seconds)
                     // 获取网址里面传进来的id的对应的人的timeline
-                    val future = userActorSelection ? FeedRequest("own",l_id, from, num)
+                    val future = userActorSelection ? FeedRequest("own", l_id, from, num)
                     val ini = Await.result(future, Duration.Inf)
                     ini match {
                       case x: Timeline => x.toNodeFormat(contentActorSelection) match {
@@ -132,6 +139,84 @@ class FacebookGoActor extends Actor with FacebookService {
 
           }
         }
+      } ~ path(LongNumber / "friends" /) { l_id =>
+
+        parameters('access_token, 'otherPara.?) { (token, otherPara) =>
+
+          complete {
+            otherPara match {
+
+              case Some(otherStr) => {
+                "test"
+              }
+              case None => {
+                Token(token).getUserIdAndName(userActorSelection) match {
+                  case err: Error => err.toJson.toString
+
+                  case IdAndName(id, name) => {
+                    implicit val timeout = Timeout(10 seconds)
+                    val future = friendsListActorSelection ? RequestId("get", l_id)
+                    val ini = Await.result(future, Duration.Inf)
+                    ini match {
+                      case x: IdAndNameArray => x.toJson.toString
+                      case x: Error => x.toJson.toString
+                      case _ => Error("internal error").toJson.toString
+                    }
+                  }
+
+                  case _ => Error("internal error").toJson.toString
+                }
+              }
+            }
+
+          }
+        }
+      } ~ path("me" /) {
+        parameters('access_token,'fields) { (token,fields) =>
+
+          complete {
+            Token(token).getUserIdAndName(userActorSelection) match {
+
+              case err: Error => err.toJson.toString
+
+              case IdAndName(id, name) => {
+                implicit val timeout = Timeout(10 seconds)
+                val future = userActorSelection ? RequestId("getUserInfo", id)
+                val ini = Await.result(future, Duration.Inf)
+                ini match {
+                  case x: PersonInfo => x.toJson.toString
+                  case x: Error => x.toJson.toString
+                  case _ => Error("internal error").toJson.toString
+                }
+              }
+
+              case _ => Error("internal error").toJson.toString
+            }
+          }
+        }
+      } ~ path(LongNumber /) { l_id =>
+        parameters('access_token,'fields) { (token,fields) =>
+
+          complete {
+            Token(token).getUserIdAndName(userActorSelection) match {
+
+              case err: Error => err.toJson.toString
+
+              case IdAndName(id, name) => {
+                implicit val timeout = Timeout(10 seconds)
+                val future = userActorSelection ? RequestId("getUserInfo", l_id)
+                val ini = Await.result(future, Duration.Inf)
+                ini match {
+                  case x: PersonInfo => x.toJson.toString
+                  case x: Error => x.toJson.toString
+                  case _ => Error("internal error").toJson.toString
+                }
+              }
+
+              case _ => Error("internal error").toJson.toString
+            }
+          }
+        }
       }
 
     } ~ post {
@@ -141,8 +226,8 @@ class FacebookGoActor extends Actor with FacebookService {
           info => {
             complete {
               info.getToken(userActorSelection) match {
-                case x:TokenAndId => x.toJson.toString
-                case x:Error => x.toJson.toString
+                case x: TokenAndId => x.toJson.toString
+                case x: Error => x.toJson.toString
                 case _ => Error("internal error").toJson.toString
               }
             }
@@ -152,25 +237,94 @@ class FacebookGoActor extends Actor with FacebookService {
         entity(as[UserPass]) {
           info => {
             complete {
-              info.register(userActorSelection) match {
-                case x:ID => {
+              info.register(userActorSelection, friendsListActorSelection) match {
+                case x: ID => {
                   import DefaultJsonProtocol._
                   val source = """{ "ok": "registration succeed", "id": """ + x.id + """}"""
                   source.parseJson.toString
                 }
-                case x:Error => x.toJson.toString
+                case x: Error => x.toJson.toString
                 case _ => Error("internal error").toJson.toString
               }
             }
           }
         }
       } ~ path(LongNumber / "feed" /) { l_id =>
-        entity(as[MessageWithToken]) {
+        entity(as[PhotoMessageWithToken]) {
           msg => {
             complete {
-              MessageWithTokenAndId(msg.message, msg.access_token, l_id).postMessage(userActorSelection, contentActorSelection, friendsListActorSelection) match {
+              println("photo post")
+              MessageWithTokenAndId(msg.message, "photo", msg.photoData, msg.albumId, msg.access_token, l_id).postMessage(userActorSelection, contentActorSelection, friendsListActorSelection) match {
                 case x: ID => x.toJson.toString
                 case x: Error => x.toJson.toString
+                case _ => Error("internal error").toJson.toString
+              }
+            }
+          }
+        } ~ entity(as[MessageWithToken]) {
+          msg => {
+            complete {
+              println("message post")
+              MessageWithTokenAndId(msg.message, "post", "",0L, msg.access_token, l_id).postMessage(userActorSelection, contentActorSelection, friendsListActorSelection) match {
+                case x: ID => x.toJson.toString
+                case x: Error => x.toJson.toString
+                case _ => Error("internal error").toJson.toString
+              }
+            }
+          }
+        }
+      } ~ path(LongNumber / "friends" /) { l_id => // l_id = me
+        entity(as[FriendIdWithToken]) {
+          f_id_token => {
+            complete {
+              Token(f_id_token.access_token).getUserIdAndName(userActorSelection) match {
+                case id_name: IdAndName => {
+                  id_name.id == l_id match {
+                    // id_name.id = me
+                    case true => {
+                      implicit val timeout = Timeout(10 seconds)
+                      val future1 = userActorSelection ? RequestId("getUsername", f_id_token.friend_id)
+                      val ini1 = Await.result(future1, Duration.Inf)
+                      ini1 match {
+                        case x: IdAndName => {
+                          val future2 = friendsListActorSelection ? RequestIdIdAndName("add", l_id, x)
+                          val ini2 = Await.result(future2, Duration.Inf)
+                          ini2 match {
+                            case y: OK => {
+                              val future3 = friendsListActorSelection ? RequestIdIdAndName("add", x.id, id_name)
+                              val ini3 = Await.result(future3, Duration.Inf)
+                              ini2 match {
+                                case z: OK => z.toJson.toString
+                                case z: Error => z.toJson.toString
+                                case _ => Error("internal error").toJson.toString
+                              }
+                            }
+                            case y: Error => y.toJson.toString
+                            case _ => Error("internal error").toJson.toString
+                          }
+                        }
+                        case _ => Error("internal error").toJson.toString
+                      }
+                    }
+                    case _ => Error("token does not match user id").toJson.toString
+                  }
+                }
+                case _ => Error("invalid token").toJson.toString
+              }
+            }
+
+          }
+        }
+      } ~ path("me" /) {
+        entity(as[TokenAndPersonInfo]) {
+          t_info => {
+            complete {
+              implicit val timeout = Timeout(10 seconds)
+              val future1 = userActorSelection ? t_info
+              val ini1 = Await.result(future1, Duration.Inf)
+              ini1 match {
+                case x:OK => x.toJson.toString
+                case x:Error => x.toJson.toString
                 case _ => Error("internal error").toJson.toString
               }
             }

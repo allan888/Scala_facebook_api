@@ -36,14 +36,20 @@ case class UserPass(username: String, password:String) {
       }
     }
   }
-  def register(userActor:ActorSelection) = {
+  def register(userActor:ActorSelection,friendlistActor:ActorSelection) = {
     implicit val timeout = Timeout(10 seconds)
     val future = userActor ? UserPassRequest("register",username,password)
     val ini = Await.result(future, Duration.Inf)
     ini match {
-      case x:ID => x
-      case x:Error => x
-      case _ => Error("error in registration process")
+      case new_id:ID => {
+        val future2 = friendlistActor ? RequestId("register",new_id.id)
+        val ini2 = Await.result(future2, Duration.Inf)
+        ini2 match {
+          case x:OK => new_id
+          case x => x
+        }
+      }
+      case x => x
     }
   }
 

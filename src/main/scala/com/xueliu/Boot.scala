@@ -33,7 +33,7 @@ object Main {
       //----------web server------------
       // create and start our service actor
       var routees: List[ActorRef] = List()
-      for (i <- 1 to 250) {
+      for (i <- 1 to 4) {
         routees = system.actorOf(Props[FacebookGoActor]) +: routees
       }
       val fbService = system.actorOf(Props[FacebookGoActor].withRouter(RoundRobinRouter(routees = routees)))
@@ -54,7 +54,7 @@ object Main {
 
         // create and start our service actor
         var routees: List[ActorRef] = List()
-        for (i <- 1 to 250) {
+        for (i <- 1 to 4) {
           routees = system.actorOf(Props[FacebookGoActor]) +: routees
         }
         val fbService = system.actorOf(Props[FacebookGoActor].withRouter(RoundRobinRouter(routees = routees)))
