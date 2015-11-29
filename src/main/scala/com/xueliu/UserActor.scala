@@ -254,7 +254,7 @@ class UserActor() extends Actor {
         }
         case "getUserInfo" => {
           userDB_by_id.get(id) match {
-            case Some(x) => sender ! x._3
+            case Some(x) => sender ! x._4
             case None => sender ! Error("user not exists")
           }
         }
