@@ -55,7 +55,6 @@ class FacebookGoActor extends Actor with FacebookService {
           "get -> root path"
         }
       } ~ path("me" / "feed" /) {
-        println("/me/feed/")
         // 这里面是网站的/me/feed/目录
 
         // 下面这行时说token是必须的, otherPara后面有问号是说otherPara是可选的
@@ -110,7 +109,6 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path(LongNumber / "feed" /) { l_id =>
-        println("/"+l_id.toString+"/feed/")
 
         parameters('access_token, 'from ? 0, 'num ? 10, 'otherPara.?) { (token, from, num, otherPara) =>
           respondWithMediaType(`application/json`) {
@@ -152,7 +150,6 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path(LongNumber / "friends" /) { l_id =>
-        println("/"+l_id.toString+"/friends/")
 
         parameters('access_token, 'otherPara.?) { (token, otherPara) =>
           respondWithMediaType(`application/json`) {
@@ -186,7 +183,6 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path("me" /) {
-        println("/me/")
         parameters('access_token, 'fields) { (token, fields) =>
           respondWithMediaType(`application/json`) {
             complete {
@@ -214,7 +210,6 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path(LongNumber /) { l_id =>
-        println("/"+l_id.toString+"/")
         parameters('access_token) { (token) =>
           respondWithMediaType(`application/json`) {
             complete {
@@ -266,7 +261,6 @@ class FacebookGoActor extends Actor with FacebookService {
     } ~ post {
       // 这里面的请求是 POST 的
       path("getToken" /) {
-        println("post: /getToken")
         entity(as[UserPass]) {
           info => {
             respondWithMediaType(`application/json`) {
@@ -281,7 +275,6 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path("register" /) {
-        println("post: /register/")
         respondWithMediaType(`application/json`) {
           entity(as[UserPass]) {
             info => {
@@ -290,13 +283,9 @@ class FacebookGoActor extends Actor with FacebookService {
                   info.register(userActorSelection, friendsListActorSelection) match {
                     case x: ID => {
                       import DefaultJsonProtocol._
-                      println("register done",x.id)
                       x.toJson.toString
                     }
-                    case x: Error => {
-                      println(x.error)
-                      x.toJson.toString
-                    }
+                    case x: Error => x.toJson.toString
                     case _ => Error("internal error").toJson.toString
                   }
                 }
@@ -305,7 +294,6 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path(LongNumber / "feed" /) { l_id =>  // user id -> feed, post a new message to (user)'s page
-        println("post: /"+l_id.toString+"/feed/")
         entity(as[PhotoMessageWithToken]) {
           msg => {
             respondWithMediaType(`application/json`) {
@@ -322,7 +310,7 @@ class FacebookGoActor extends Actor with FacebookService {
           msg => {
             respondWithMediaType(`application/json`) {
               complete {
-                //println("message post")
+                println("message post")
                 MessageWithTokenAndId(msg.message, "post", "", 0L, msg.access_token, l_id).postMessage(userActorSelection, contentActorSelection, friendsListActorSelection) match {
                   case x: ID => x.toJson.toString
                   case x: Error => {
@@ -336,7 +324,6 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path(LongNumber / "friends" /) { l_id => // user id -> get friend
-        println("post: /"+l_id.toString+"/friends/")
         entity(as[FriendIdWithToken]) {
           f_id_token => {
             respondWithMediaType(`application/json`) {
@@ -387,7 +374,6 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path("me" /) {
-        println("post: /me/")
         entity(as[TokenAndPersonInfo]) {
           t_info => {
             respondWithMediaType(`application/json`) {
@@ -405,7 +391,6 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path("album" /) {
-        println("post: /album")
         import TokenAndAlbumInfoJsonProtocol._
         entity(as[TokenAndAlbumInfo]) {
           t_info => {
@@ -424,7 +409,6 @@ class FacebookGoActor extends Actor with FacebookService {
           }
         }
       } ~ path(LongNumber /) { l_num =>// any node is, could be person, album or post, this means update this node's info
-        println("post: /"+l_num.toString+"/")
         import TokenAndAlbumInfoJsonProtocol._
         entity(as[TokenAndPersonInfo]) {
           t_info => {
@@ -483,7 +467,6 @@ class FacebookGoActor extends Actor with FacebookService {
     } ~ delete {
       path(LongNumber /) {
         l_num =>
-        println("delete: /"+l_num.toString+"/")
           parameters('access_token) {
             (token) =>
               respondWithMediaType(`application/json`) {

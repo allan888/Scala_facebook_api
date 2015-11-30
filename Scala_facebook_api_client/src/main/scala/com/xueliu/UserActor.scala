@@ -219,7 +219,7 @@ class UserActor() extends Actor {
                   }
                 }
                 case None => {
-                  //println("album id:",aid)
+                  println("album id:",aid)
                   sender ! Error("invalid album id")
                 }
               }

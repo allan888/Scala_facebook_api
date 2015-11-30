@@ -24,7 +24,6 @@ case class MessageWithTokenAndId(message: String, typ: String, photoData: String
     val ret1 = Await.result(future1, Duration.Inf)
     ret1 match {
       case IdAndName(got_id, got_name) => {
-        //println("gotten id:"+got_id.toString)
         if (got_id == uid) {
           var album_id = 0L
 
@@ -34,7 +33,7 @@ case class MessageWithTokenAndId(message: String, typ: String, photoData: String
               val ret4 = Await.result(future4, Duration.Inf)
               ret4 match {
                 case ID(ret_album_id) => {
-                  //println(uid.toString+"'s default album is:"+ret_album_id.toString)
+                  println(uid.toString+"'s default album is:"+ret_album_id.toString)
                   album_id = ret_album_id
                 }
               }
