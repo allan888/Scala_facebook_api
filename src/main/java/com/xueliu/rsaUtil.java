@@ -31,11 +31,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 
-/**
- * RSA算法，实现数据的加密解密。
- * @author ShaoJiang
- *
- */
+
 public class RSAUtil {
 
     public static String publicToString(PublicKey publicKey) {
