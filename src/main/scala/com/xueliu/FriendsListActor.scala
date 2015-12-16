@@ -9,16 +9,16 @@ import scala.collection.mutable
   */
 class FriendsListActor() extends Actor{
 
-  val friendsListDB = new HashMap[Long,ListBuffer[IdAndName]]()
-  friendsListDB += (1000001L -> new ListBuffer[IdAndName])
-  IdAndName(1000002L,"yazhang") +=: friendsListDB(1000001L)
+  val friendsListDB = new HashMap[Long,ListBuffer[IdAndNameAndPublic]]()
+  friendsListDB += (1000001L -> new ListBuffer[IdAndNameAndPublic])
+  IdAndNameAndPublic(1000002L,"yazhang","MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCVrR6Z2qNnt7EdZu0SaSSFQnN7pH9iQDSH79IgOxWt9sIPbeVW6uUdkmrOKTAjMzzm5QMWc3dbjwPZUNRb1jyVWnDWMYmHsR6003GiknUJcfTmQ/i09olFioTFm8kL7t0EYir61Fi1NG5AR3YiuduuwW2pzNi/nQG7yZxxoW1d2wIDAQAB") +=: friendsListDB(1000001L)
 
-  friendsListDB += (1000002L -> new ListBuffer[IdAndName])
-  IdAndName(1000001L,"xueliu") +=: friendsListDB(1000002L)
+  friendsListDB += (1000002L -> new ListBuffer[IdAndNameAndPublic])
+  IdAndNameAndPublic(1000001L,"xueliu","MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCVrR6Z2qNnt7EdZu0SaSSFQnN7pH9iQDSH79IgOxWt9sIPbeVW6uUdkmrOKTAjMzzm5QMWc3dbjwPZUNRb1jyVWnDWMYmHsR6003GiknUJcfTmQ/i09olFioTFm8kL7t0EYir61Fi1NG5AR3YiuduuwW2pzNi/nQG7yZxxoW1d2wIDAQAB") +=: friendsListDB(1000002L)
 
   def getList(uid:Long) = {
     friendsListDB.get(uid) match {
-      case Some(f_list) => IdAndNameArray(f_list.toArray)
+      case Some(f_list) => IdAndNameAndPublicArray(f_list.toArray)
       case None => Error("user not exists")
     }
   }
@@ -27,16 +27,16 @@ class FriendsListActor() extends Actor{
     friendsListDB.get(uid) match {
       case Some(f_list) => Error("user already exists")
       case None => {
-        friendsListDB += (uid -> new ListBuffer[IdAndName])
+        friendsListDB += (uid -> new ListBuffer[IdAndNameAndPublic])
         OK("registration succeed")
       }
     }
   }
 
-  def addFriend(uid:Long,id_name:IdAndName) = {
-    if( friendsListDB.keySet.exists(_ == uid) && friendsListDB.keySet.exists(_ == id_name.id) && uid != id_name.id){
-      if(!friendsListDB.exists({ case (x:Long,y:ListBuffer[IdAndName]) => (x == uid && y.contains(id_name)) } ) ){
-        id_name +=: friendsListDB(uid)
+  def addFriend(uid:Long,id_name_pub:IdAndNameAndPublic) = {
+    if( friendsListDB.keySet.exists(_ == uid) && friendsListDB.keySet.exists(_ == id_name_pub.id) && uid != id_name_pub.id){
+      if(!friendsListDB.exists({ case (x:Long,y:ListBuffer[IdAndNameAndPublic]) => (x == uid && y.contains(id_name_pub)) } ) ){
+        id_name_pub +=: friendsListDB(uid)
         OK("add friends finished")
       }else{
         Error("they are friends already")
@@ -74,11 +74,16 @@ class FriendsListActor() extends Actor{
     }
     case RequestIdIdAndName(req,id,id_name) => { // id = me, id_name = other
       req match {
-        case "add" => {
-          sender ! addFriend(id,id_name)
-        }
         case "del" => {
           sender ! delFriend(id_name.id,id)
+        }
+        case _ => sender ! Error("unsupported friendsListActor request.")
+      }
+    }
+    case RequestIdIdAndNameAndPublic(req,id,id_name_pub) => {
+      req match {
+        case "add" => {
+          sender ! addFriend(id,id_name_pub)
         }
         case _ => sender ! Error("unsupported friendsListActor request.")
       }

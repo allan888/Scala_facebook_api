@@ -25,4 +25,14 @@ case class Token(access_token: String) {
       case _ => Error("unrecognized response in class Token")
     }
   }
+  def getUserIdAndNameAndPublic(userActor:ActorSelection) = {
+    implicit val timeout = Timeout(10 seconds)
+    val future = userActor ? ("getPublic",this)
+    val ret = Await.result(future, Duration.Inf)
+    ret match {
+      case x:IdAndNameAndPublic => x
+      case x:Error => x
+      case _ => Error("unrecognized response in class Token")
+    }
+  }
 }
